@@ -19,3 +19,6 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Launcher icon working files (full-size art, contact sheets)
+icon-src/
