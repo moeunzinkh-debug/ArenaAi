@@ -1,0 +1,5 @@
+ArenaAssist ist ein leichter, datenschutzfreundlicher Android-WebView-Wrapper speziell für arena.ai (KI-Chat- und LLM-Bestenlisten-Seite).
+
+Funktionen: fokussierte Chat-Oberfläche, Integration als digitaler Assistent, "Ask Arena"-Teilen aus jeder App, intelligente Link-Behandlung (externe Links öffnen im Browser), Sitzungs-Cookies bleiben erhalten, Cache wird beim Beenden gelöscht, Datei-Upload/Download, HTML-Einstellungen und Offline-Chat-Verlauf.
+
+Dieses Projekt ist ein Fork von duckAssist (GPLv3), neu geschrieben für arena.ai.

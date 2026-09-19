@@ -1,0 +1,5 @@
+ArenaAssist, özellikle arena.ai (YZ sohbet ve LLM liderlik tablosu sitesi) için tasarlanmış hafif, gizlilik odaklı bir Android WebView sarmalayıcısıdır.
+
+Özellikler: odaklanmış sohbet arayüzü, dijital asistan entegrasyonu, her uygulamadan "Ask Arena" paylaşımı, harici bağlantılar tarayıcıda açılır, oturum çerezleri korunur, çıkarken önbellek temizlenir, dosya yükleme/indirme, HTML ayarları ve çevrimdışı sohbet görüntüleyici.
+
+Bu proje, duckAssist'in (GPLv3) arena.ai için yeniden yazılmış bir çatalıdır.

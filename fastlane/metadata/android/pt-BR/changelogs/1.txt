@@ -1,0 +1,1 @@
+Versão inicial 1.0.0: wrapper WebView do arena.ai com compartilhamento Ask Arena, integração de assistente, upload/download de arquivos e visualizador de chats offline.
