@@ -65,33 +65,23 @@
                 android:indeterminate="true"
                 android:visibility="gone" />
 
-            <!-- Floating main list menu: New chat / Leaderboard / Search / Settings -->
-            <ImageButton
-                android:id="@+id/menuFab"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_alignParentTop="true"
-                android:layout_alignParentEnd="true"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/settings_fab_background"
-                android:contentDescription="@string/menu"
-                android:src="@drawable/ic_menu_list"
-                android:padding="10dp"
-                android:alpha="0.85" />
-
-            <!-- Clear-cache shortcut, sitting directly left of the menu button -->
+            <!-- The app's single floating button: clear cache on a tap, app
+                 settings on a long press. Same top-right row as in
+                 activity_main.xml, left of arena.ai's own "New chat" bubble.
+                 The values here are the pre-measurement defaults;
+                 MainActivity.alignHeaderIcons() refines them from the live page. -->
             <ImageButton
                 android:id="@+id/cacheFab"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_alignTop="@id/menuFab"
-                android:layout_toStartOf="@id/menuFab"
-                android:layout_marginEnd="8dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="6dp"
+                android:layout_marginEnd="56dp"
                 android:background="@drawable/settings_fab_background"
                 android:contentDescription="@string/clear_cache"
                 android:src="@drawable/ic_action_clear_cache"
-                android:padding="10dp"
+                android:padding="8dp"
                 android:alpha="0.85" />
         </RelativeLayout>
     </LinearLayout>

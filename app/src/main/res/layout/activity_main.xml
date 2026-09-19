@@ -19,35 +19,30 @@
         android:indeterminate="true"
         android:visibility="gone" />
 
-    <!-- Floating main list menu: New chat / Leaderboard / Search / Settings
-         (replaces duckAssist's cloned web-button injection, and the old
-         settings-only gear) -->
-    <ImageButton
-        android:id="@+id/menuFab"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="56dp"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/settings_fab_background"
-        android:contentDescription="@string/menu"
-        android:src="@drawable/ic_menu_list"
-        android:padding="10dp"
-        android:alpha="0.85" />
+    <!-- The app's single floating button: clear cache on a tap, app settings on a
+         long press. The list menu that used to sit next to it was dropped — its
+         New chat / Leaderboard / Search entries only duplicated arena.ai's own
+         sidebar, which is still one tap away in the page.
 
-    <!-- Clear-cache shortcut, sitting directly left of the menu button -->
+         It is pinned to the top-right corner, immediately left of arena.ai's own
+         "New chat" bubble, so both icons form one horizontal row of equally sized,
+         equally spaced circles. The margins below are only the first-paint
+         defaults: once the page is loaded MainActivity.alignHeaderIcons() measures
+         that bubble and rewrites the margins (and the box size) from its real
+         geometry, which also keeps the row correct on rotation, on text-size
+         changes and on page zoom. -->
     <ImageButton
         android:id="@+id/cacheFab"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:layout_alignTop="@id/menuFab"
-        android:layout_toStartOf="@id/menuFab"
-        android:layout_marginEnd="8dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="56dp"
         android:background="@drawable/settings_fab_background"
         android:contentDescription="@string/clear_cache"
         android:src="@drawable/ic_action_clear_cache"
-        android:padding="10dp"
+        android:padding="8dp"
         android:alpha="0.85" />
 
 </RelativeLayout>

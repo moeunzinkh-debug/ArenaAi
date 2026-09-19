@@ -13,16 +13,13 @@
     <string name="url_copied">copied to clipboard</string>
     <string name="attach_shared_file">Tap attach button to add shared file</string>
     <string name="settings">Settings</string>
-    <!-- Main list menu (the floating button) -->
-    <string name="menu">Menu</string>
-    <string name="menu_new_chat">New chat</string>
-    <string name="menu_leaderboard">Leaderboard</string>
-    <string name="menu_search">Search</string>
-    <string name="menu_settings">Settings</string>
-    <!-- Floating clear-cache shortcut -->
-    <string name="clear_cache">Clear cache</string>
+    <!-- Floating clear-cache shortcut (long press opens the settings) -->
+    <string name="clear_cache">Clear cache · long press for settings</string>
     <string name="clear_cache_done">Cache cleared · %1$s freed</string>
     <string name="clear_cache_empty">Cache was already empty</string>
+    <string name="settings_hint">Long press the button again any time to open Settings</string>
+    <!-- arena.ai answered with an error status (rate limit, expired session, …) -->
+    <string name="arena_http_error">arena.ai returned HTTP %1$d — wait a moment, then try again or sign in again</string>
     <!-- Offline chat archive -->
     <string name="archive_clear_title">Remove all archived chats?</string>
     <string name="archive_clear_message">This deletes the offline copy of your chats stored on this device. Your conversations on arena.ai stay untouched, and the archive is rebuilt from the site the next time arena.ai loads.</string>
