@@ -1,0 +1,1 @@
+İlk 1.0.0 sürümü: Ask Arena paylaşımı, asistan entegrasyonu, dosya yükleme/indirme ve çevrimdışı sohbet görüntüleyici içeren arena.ai WebView sarmalayıcı.

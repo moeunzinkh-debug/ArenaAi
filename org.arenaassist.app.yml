@@ -1,0 +1,27 @@
+AntiFeatures:
+  NonFreeNet:
+    en-US: Connects to arena.ai servers.
+Categories:
+  - AI Chat
+License: GPL-3.0-only
+AuthorName: ArenaAssist contributors
+SourceCode: https://github.com/moeunzinkh-debug/ArenaAi
+IssueTracker: https://github.com/moeunzinkh-debug/ArenaAi/issues
+
+AutoName: ArenaAssist
+
+RepoType: git
+Repo: https://github.com/moeunzinkh-debug/ArenaAi.git
+
+Builds:
+  - versionName: 1.0.0
+    versionCode: 1
+    commit: arena/01a0b8ab-arenaai
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^[0-9.]+$
+CurrentVersion: 1.0.0
+CurrentVersionCode: 1

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArenaAssist Settings</title>
+    <style>
+        :root {
+            --bg-color: #16171a;
+            --card-bg: #212226;
+            --accent-color: #8b7cff;
+            --accent-hover: #9d90ff;
+            --text-primary: #f5f6f7;
+            --text-secondary: #9fa2a6;
+            --border-color: #2c2d30;
+            --input-bg: #191a1d;
+            --toggle-bg: #3e4045;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-color: #f7f7f7;
+                --card-bg: #ffffff;
+                --accent-color: #4a3fd1;
+                --accent-hover: #5a4fe0;
+                --text-primary: #222222;
+                --text-secondary: #656565;
+                --border-color: #e5e5e5;
+                --input-bg: #fdfdfd;
+                --toggle-bg: #d5d5d5;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(12px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        header {
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .header-title-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            color: var(--accent-color);
+        }
+
+        h1 {
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s, color 0.2s;
+            width: 34px;
+            height: 34px;
+        }
+
+        .close-btn:hover {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .close-btn:active {
+            transform: scale(0.95);
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent-color);
+            margin: 24px 0 8px 0;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-info {
+            flex: 1;
+            margin-right: 16px;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .setting-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Switch toggle style */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--toggle-bg);
+            transition: .2s ease;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .2s ease;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Input field styles */
+        .input-group {
+            margin-top: 14px;
+            margin-bottom: 16px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-size: 13.5px;
+            line-height: 1.4;
+            resize: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(139, 124, 255, 0.2);
+        }
+
+        /* Action button styles */
+        .action-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .action-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title-container">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <h1>ArenaAssist Settings</h1>
+            </div>
+            <button type="button" class="close-btn" onclick="cancel()" aria-label="Close Settings">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </header>
+
+        <form id="settingsForm" onsubmit="event.preventDefault();">
+            <div class="section-title">General</div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Bottom Drawer (Assistant)</div>
+                    <div class="setting-desc">Use bottom drawer panel for Assistant triggers</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="use_drawer_assistant">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Bottom Drawer (Shared Intents)</div>
+                    <div class="setting-desc">Use bottom drawer panel for Shared Text &amp; Documents</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="use_drawer_shared">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Auto Focus on Assist</div>
+                    <div class="setting-desc">Automatically focus the arena.ai chat input when launched as Assistant</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="trigger_voice_assistant">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Auto Focus &amp; Open Keyboard</div>
+                    <div class="setting-desc">Automatically focus the chat input box and open the keyboard when app opens</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="auto_focus_keyboard" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!--
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Prompt Dialog on Launch</div>
+                    <div class="setting-desc">Open a prompt dialog when launching the app to immediately send queries with auto-prompt</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="prompt_on_launch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            -->
+
+            <div class="section-title">Prompts Suffix</div>
+
+            <div class="input-group">
+                <label class="input-label" for="ask_arena_suffix">Ask Arena Suffix</label>
+                <textarea id="ask_arena_suffix" placeholder="Optional prompt suffix to append (e.g. Explain like I'm 5)"></textarea>
+            </div>
+
+            <div class="input-group">
+                <label class="input-label" for="shared_doc_suffix">Shared Document AI Suffix</label>
+                <textarea id="shared_doc_suffix" placeholder="Optional prompt suffix for shared files (e.g. Summarize this document)"></textarea>
+            </div>
+
+            <div class="section-title">Data &amp; Privacy</div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Saved Chats Viewer</div>
+                    <div class="setting-desc">Browse and view all your saved chat conversations offline.</div>
+                </div>
+                <button type="button" class="action-btn" onclick="openChatsViewer()">View</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let lastHeight = window.innerHeight;
+
+        function syncMutualExclusivity() {
+            const autoFocusCb = document.getElementById('auto_focus_keyboard');
+            const promptLaunchCb = document.getElementById('prompt_on_launch');
+
+            if (autoFocusCb && promptLaunchCb) {
+                if (autoFocusCb.checked) {
+                    promptLaunchCb.checked = false;
+                    promptLaunchCb.disabled = true;
+                    promptLaunchCb.closest('.setting-row').style.opacity = '0.4';
+                    promptLaunchCb.closest('.setting-row').style.pointerEvents = 'none';
+                } else if (promptLaunchCb.checked) {
+                    autoFocusCb.checked = false;
+                    autoFocusCb.disabled = true;
+                    autoFocusCb.closest('.setting-row').style.opacity = '0.4';
+                    autoFocusCb.closest('.setting-row').style.pointerEvents = 'none';
+                } else {
+                    promptLaunchCb.disabled = false;
+                    autoFocusCb.disabled = false;
+                    promptLaunchCb.closest('.setting-row').style.opacity = '1';
+                    promptLaunchCb.closest('.setting-row').style.pointerEvents = 'auto';
+                    autoFocusCb.closest('.setting-row').style.opacity = '1';
+                    autoFocusCb.closest('.setting-row').style.pointerEvents = 'auto';
+                }
+            }
+        }
+
+        function autoSave() {
+            const promptLaunchEl = document.getElementById('prompt_on_launch');
+            const data = {
+                use_drawer_assistant: document.getElementById('use_drawer_assistant').checked,
+                use_drawer_shared: document.getElementById('use_drawer_shared').checked,
+                trigger_voice_assistant: document.getElementById('trigger_voice_assistant').checked,
+                auto_focus_keyboard: document.getElementById('auto_focus_keyboard').checked,
+                prompt_on_launch: promptLaunchEl ? promptLaunchEl.checked : false,
+                ask_arena_suffix: document.getElementById('ask_arena_suffix').value,
+                shared_doc_suffix: document.getElementById('shared_doc_suffix').value
+            };
+            if (typeof AndroidSettings !== 'undefined' && AndroidSettings.saveSettingsAuto) {
+                AndroidSettings.saveSettingsAuto(JSON.stringify(data));
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof AndroidSettings !== 'undefined' && AndroidSettings.getSettingsJson) {
+                try {
+                    const settings = JSON.parse(AndroidSettings.getSettingsJson());
+                    document.getElementById('use_drawer_assistant').checked = settings.use_drawer_assistant;
+                    document.getElementById('use_drawer_shared').checked = settings.use_drawer_shared;
+                    document.getElementById('trigger_voice_assistant').checked = settings.trigger_voice_assistant;
+                    document.getElementById('auto_focus_keyboard').checked = settings.auto_focus_keyboard !== undefined ? settings.auto_focus_keyboard : true;
+                    const promptLaunchEl = document.getElementById('prompt_on_launch');
+                    if (promptLaunchEl) {
+                        promptLaunchEl.checked = settings.prompt_on_launch || false;
+                    }
+                    document.getElementById('ask_arena_suffix').value = settings.ask_arena_suffix || '';
+                    document.getElementById('shared_doc_suffix').value = settings.shared_doc_suffix || '';
+                } catch (e) {
+                    console.error('Error loading settings from Android:', e);
+                }
+            }
+
+            syncMutualExclusivity();
+
+            const autoFocusCb = document.getElementById('auto_focus_keyboard');
+            const promptLaunchCb = document.getElementById('prompt_on_launch');
+
+            if (autoFocusCb) {
+                autoFocusCb.addEventListener('change', () => {
+                    syncMutualExclusivity();
+                    autoSave();
+                });
+            }
+
+            if (promptLaunchCb) {
+                promptLaunchCb.addEventListener('change', () => {
+                    syncMutualExclusivity();
+                    autoSave();
+                });
+            }
+
+            // Auto-save other checkboxes on change
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                if (cb !== autoFocusCb && cb !== promptLaunchCb) {
+                    cb.addEventListener('change', autoSave);
+                }
+            });
+
+            // Auto-scroll focused textareas and set up auto-save on blur
+            const textareas = document.querySelectorAll('textarea');
+            textareas.forEach(textarea => {
+                textarea.addEventListener('focus', () => {
+                    setTimeout(() => {
+                        textarea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 300);
+                });
+
+                textarea.addEventListener('blur', autoSave);
+            });
+
+            // Auto-deselect textbox when keyboard is closed (window height increases significantly)
+            window.addEventListener('resize', () => {
+                const currentHeight = window.innerHeight;
+                if (currentHeight - lastHeight > 150) {
+                    if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
+                        document.activeElement.blur();
+                    }
+                }
+                lastHeight = currentHeight;
+            });
+        });
+
+        function cancel() {
+            if (typeof AndroidSettings !== 'undefined' && AndroidSettings.dismissSettings) {
+                AndroidSettings.dismissSettings();
+            }
+        }
+
+        function openChatsViewer() {
+            if (typeof AndroidSettings !== 'undefined' && AndroidSettings.openChatsViewer) {
+                AndroidSettings.openChatsViewer();
+            }
+        }
+    </script>
+</body>
+</html>

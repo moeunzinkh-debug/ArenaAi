@@ -1,0 +1,13 @@
+ArenaAssist is a lightweight, privacy-focused Android WebView wrapper designed specifically for arena.ai (the AI chat and LLM leaderboard site). It bridges the gap between web and native by providing advanced integration features.
+
+Key Features:
+- Focused Interface: A clean, distraction-free environment tailored for AI chat, complete with a native progress bar.
+- Digital Assistant Integration: Set ArenaAssist as your device's default digital assistant app for instant access.
+- Auto-Focus on Assist: Launching via the assistant shortcut opens and focuses the arena.ai chat input.
+- "Ask Arena" Integration: Select text in any app and choose "Ask Arena" from the context menu. The app opens in a dedicated window and injects your query into the chat box.
+- Smart Link Handling: External links and citations open in your system browser, keeping your chat session focused.
+- Enhanced Privacy: Session cookies are preserved so you stay logged in, while the app cache is cleared on exit.
+- Native File Support: Upload documents for AI analysis and download attachments directly to your Downloads/ArenaAssist folder.
+- HTML Settings: Configure bottom drawer behavior, auto-focus options, and default prompt suffixes via a custom-styled settings page.
+
+This project is a fork of duckAssist (GPLv3), rewritten for arena.ai.

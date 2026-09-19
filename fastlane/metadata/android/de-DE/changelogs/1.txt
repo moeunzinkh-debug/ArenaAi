@@ -1,0 +1,1 @@
+Erste 1.0.0-Version: arena.ai WebView-Wrapper mit Ask-Arena-Teilen, Assistenten-Integration, Datei-Upload/Download und Offline-Chat-Anzeige.
