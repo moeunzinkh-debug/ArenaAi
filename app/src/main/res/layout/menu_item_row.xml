@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Row of the main list menu (see MainActivity.showMainMenu). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
+    android:minHeight="56dp">
+
+    <ImageView
+        android:id="@+id/menuRowIcon"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginEnd="16dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_action_search" />
+
+    <TextView
+        android:id="@+id/menuRowLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:text="@string/settings" />
+
+</LinearLayout>

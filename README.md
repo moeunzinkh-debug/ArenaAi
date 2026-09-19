@@ -33,9 +33,18 @@ duck.ai-specific logic replaced by arena.ai logic.
 - 📁 **Native File Support**: upload via Camera/File Manager chooser, download
   `blob:`/`data:`/standard files to `Downloads/ArenaAssist/` with timestamped
   `Arena_Chat_yyyyMMdd_HHmmss.md` names.
-- ⚙️ **HTML Settings**: drawer behavior, auto-focus options, and prompt
-  suffixes, opened from a floating native settings button. Includes an offline
-  Saved Chats Viewer.
+- ⚙️ **HTML Settings**: drawer behavior, auto-focus options, prompt suffixes and
+  a **Change Text Size** control (scale text only, images, or the whole page,
+  from 50% to 300%), opened from the floating list menu. Also holds the offline
+  Saved Chats Viewer and a **Remove all** action for the archived chats.
+- 📋 **Floating List Menu**: the floating button opens a list menu — **New chat**,
+  **Leaderboard**, **Search**, **Settings** — mirroring the arena.ai sidebar, so
+  the sections are one tap away on any page.
+- 🧹 **Clear Cache button**: a second icon sits directly left of the menu button in the
+  top-right corner. One tap drops the WebView HTTP cache and the app cache folders and
+  toasts how much was freed. Login, Web Storage and the chat archive are untouched, and
+  in-flight share/camera temp files are skipped, so it is always safe to press. (Cache is
+  also cleared on exit.)
 
 ## What changed vs duckAssist
 
@@ -51,12 +60,14 @@ duck.ai-specific logic replaced by arena.ai logic.
 | Voice trigger | `VOICE_JS` (duck.ai SVG selectors) | Removed; ASSIST now focuses chat input (`trigger_voice_assistant` = auto-focus-on-assist) |
 | Continue chat | `CONTINUE_CHAT_JS` (duck.ai SVG selectors) | Removed |
 | RTL resolver | `RTL_RESOLVER_JS` | Removed |
-| Settings button | Cloned duck.ai web button | Floating native settings button overlay |
+| Settings button | Cloned duck.ai web button | Floating native list menu: New chat / Leaderboard / Search / Settings |
+| Text size | Pinch zoom only | Pinch zoom **plus** a Display setting: scale text only, images, or the whole page (50-300%) |
+| Cache control | Cleared on exit only | Cleared on exit **plus** a top-right Clear cache button that reports the bytes freed |
 | Image-zoom monitor | duck.ai hashed CSS class | Removed |
 | Download folder | `Downloads/duck.ai/` | `Downloads/ArenaAssist/` |
 | Export filename | `Duck_AI_Chat_<ts>.md` | `Arena_Chat_<ts>.md` |
-| Settings keys | `ask_duck_suffix`, `continue_last_chat`, `rtl_resolver` | `ask_arena_suffix` (+ `shared_doc_suffix`, `use_drawer_*`, `trigger_voice_assistant`, `auto_focus_keyboard`, `prompt_on_launch`) |
-| Icon / texts | duck branding | Original arena/trophy/bubble icon, `ArenaAssist` branding |
+| Settings keys | `ask_duck_suffix`, `continue_last_chat`, `rtl_resolver` | `ask_arena_suffix` (+ `shared_doc_suffix`, `use_drawer_*`, `trigger_voice_assistant`, `auto_focus_keyboard`, `prompt_on_launch`, `display_mode`, `display_scale`) |
+| Icon / texts | duck branding | Original robot-mascot launcher icon, `ArenaAssist` branding |
 | F-Droid metadata | duck.ai texts, changelogs 13–249 | arena.ai texts, changelog reset (`1.txt`) |
 
 Architecture kept from duckAssist: `MainActivity` WebView core +
@@ -90,6 +101,25 @@ the input appears. Nothing is auto-sent; the user reviews and taps send.
 and `button[role="combobox"]` match selectors used by community lmarena.ai
 userscripts (e.g. LMArena-Helper); the rest are defensive fallbacks.
 
+## Launcher icon
+
+One square source image drives every icon asset:
+
+```sh
+./tools/make-launcher-icons.sh tools/icon-source/robot_master.webp
+```
+
+It rewrites `mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher.{webp,png}` (legacy icons,
+48-192 px) plus the adaptive `ic_launcher_{foreground,background,monochrome}`
+layers, and prints a contact sheet showing the result through the circle,
+squircle and rounded-square masks launchers actually apply. Useful flags:
+`--fill 0.8` for artwork that carries its own frame or dark corners (it gets
+shrunk into the safe zone and feathered into a generated glow field),
+`--format png` to emit PNGs instead of WebP, `--preview out.png` for the
+contact sheet. Only ImageMagick 6 is required.
+
+Do not hand-edit the generated bitmaps — change the source and re-run.
+
 ## Build
 
 Requirements: JDK 17, Android SDK (compileSdk/targetSdk 35, minSdk 24).
@@ -112,6 +142,18 @@ every push/PR and uploads it as an artifact.
 6. File download (incl. `blob:`) lands in `Downloads/ArenaAssist/`.
 7. App can be set as the default assistant app; shortcut focuses chat input.
 8. Back button navigates WebView history, then exits.
+9. List menu: floating button → **New chat** resets the conversation, **Leaderboard**
+   and **Search** land on `/leaderboard` and `/history/search` on the *same* host you
+   are browsing, **Settings** opens the settings page.
+10. Display size: **Images** at 145% grows reply images but not text; **Whole page** at
+    85% shrinks everything; **Text only** changes text while layout metrics stay. The
+    value survives a restart, is shared with the pinch gesture, and re-applies after
+    every navigation.
+11. Archive: Settings → **Remove all** → confirm → the Saved Chats Viewer is empty (the
+    archive is deliberately rebuilt from arena.ai on the next page load; arena.ai
+    itself is untouched).
+12. Clear cache: tap the top-right broom/trash icon → toast reports the freed size (or
+    "already empty") → stay logged in, and arena.ai still works (assets re-download).
 
 ## Contributing / Donate
 

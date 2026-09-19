@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <!-- Wastebasket: throw away disposable bytes (cache), never the login. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M9.5,2.5h5A1.5,1.5 0 0,1 16,4v1h3.5v2H4.5V5H8V4A1.5,1.5 0 0,1 9.5,2.5zM9.5,4.5v0.5h5V4.5z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M6,8.5h12l-0.9,11.2A1.6,1.6 0 0,1 15.5,21.2h-7A1.6,1.6 0 0,1 6.9,19.7zM9,10.6l0.35,8.1h1.35L10.35,10.6zM11.35,10.6h1.3l-0.02,8.1h-1.26zM13.7,10.6l-0.35,8.1h1.3L14.65,10.6z" />
+</vector>
