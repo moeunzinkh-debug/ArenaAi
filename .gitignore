@@ -1,0 +1,26 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+fdroiddata
+.externalNativeBuild
+.cxx
+*.zip
+local.properties
+
+# Keystores & Backups
+*.jks
+*.keystore
+/keystore_backup/
+.temp
+*.yml
+!.github/**/*.yml
+!org.arenaassist.app.yml

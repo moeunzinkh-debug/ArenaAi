@@ -1,0 +1,28 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- chat bubble -->
+    <path
+        android:fillColor="#5B3DF5"
+        android:pathData="M33,28 H75 A8,8 0 0 1 83,36 V62 A8,8 0 0 1 75,70 H50 L38,80 V70 H33 A8,8 0 0 1 25,62 V36 A8,8 0 0 1 33,28 Z" />
+    <!-- trophy cup -->
+    <path
+        android:fillColor="#FFC94D"
+        android:pathData="M45,37 H63 V47 A9,9 0 0 1 45,47 Z" />
+    <!-- trophy handles -->
+    <path
+        android:strokeColor="#FFC94D"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M45,40 H40 A4,4 0 0 0 44,48 M63,40 H68 A4,4 0 0 1 64,48" />
+    <!-- trophy stem and base -->
+    <path
+        android:fillColor="#FFC94D"
+        android:pathData="M52,55 H56 V59 H52 Z M47,59 H61 V62 H47 Z" />
+    <!-- star on cup -->
+    <path
+        android:fillColor="#5B3DF5"
+        android:pathData="M54,40 L55.3,43 L58.5,43.2 L56,45.3 L56.8,48.5 L54,46.8 L51.2,48.5 L52,45.3 L49.5,43.2 L52.7,43 Z" />
+</vector>
