@@ -35,22 +35,24 @@ duck.ai-specific logic replaced by arena.ai logic.
   `Arena_Chat_yyyyMMdd_HHmmss.md` names.
 - ⚙️ **HTML Settings**: drawer behavior, auto-focus options, prompt suffixes and
   a **Change Text Size** control (scale text only, images, or the whole page,
-  from 50% to 300%), opened from the floating list menu. Also holds the offline
-  Saved Chats Viewer and a **Remove all** action for the archived chats.
-- 📋 **Floating List Menu**: the floating button opens a list menu — **New chat**,
-  **Leaderboard**, **Search**, **Settings** — mirroring the arena.ai sidebar, so
-  the sections are one tap away on any page.
-- 📐 **One header row**: the list-menu and clear-cache buttons are parked in the
-  top-right corner, immediately left of arena.ai's own **New chat** bubble. All
-  three icons share one horizontal row, one baseline, one box size and one 8dp
-  gap. The row is measured from the live page (see `alignHeaderIcons`), so it
-  stays glued to that bubble on rotation, on text-size changes and on page zoom —
-  it is never left floating in the middle of the screen.
-- 🧹 **Clear Cache button**: the left-most icon of that row. One tap drops the
-  WebView HTTP cache and the app cache folders and
-  toasts how much was freed. Login, Web Storage and the chat archive are untouched, and
-  in-flight share/camera temp files are skipped, so it is always safe to press. (Cache is
-  also cleared on exit.)
+  from 50% to 300%), opened by **long-pressing the floating button**. Also holds
+  the offline Saved Chats Viewer and a **Remove all** action for the archived
+  chats.
+- 📐 **One header row**: the floating button is parked in the top-right corner,
+  immediately left of arena.ai's own **New chat** bubble. Both icons share one
+  horizontal row, one baseline, one box size and one 8dp gap. The row is measured
+  from the live page (see `alignHeaderIcons`), so it stays glued to that bubble on
+  rotation, on text-size changes and on page zoom — it is never left floating in
+  the middle of the screen.
+- 🧹 **Floating button — clear cache / settings**: one tap drops the WebView HTTP
+  cache and the app cache folders and toasts how much was freed. Login, Web
+  Storage and the chat archive are untouched, and in-flight share/camera temp
+  files are skipped, so it is always safe to press. (Cache is also cleared on
+  exit.) A **long press** opens the settings dialog, with a one-time hint toast
+  the first time.
+- 🗑️ **No list menu**: the earlier New chat / Leaderboard / Search / Settings list
+  menu was removed — the first three entries only duplicated arena.ai's own
+  sidebar, which is still one tap away inside the page.
 
 ## What changed vs duckAssist
 
@@ -66,7 +68,7 @@ duck.ai-specific logic replaced by arena.ai logic.
 | Voice trigger | `VOICE_JS` (duck.ai SVG selectors) | Removed; ASSIST now focuses chat input (`trigger_voice_assistant` = auto-focus-on-assist) |
 | Continue chat | `CONTINUE_CHAT_JS` (duck.ai SVG selectors) | Removed |
 | RTL resolver | `RTL_RESOLVER_JS` | Removed |
-| Settings button | Cloned duck.ai web button | Floating native list menu: New chat / Leaderboard / Search / Settings |
+| Settings button | Cloned duck.ai web button | Floating native button: tap = clear cache, long press = settings (no list menu) |
 | Text size | Pinch zoom only | Pinch zoom **plus** a Display setting: scale text only, images, or the whole page (50-300%) |
 | Cache control | Cleared on exit only | Cleared on exit **plus** a top-right Clear cache button that reports the bytes freed |
 | Header buttons | Cloned duck.ai web buttons | Native list-menu + clear-cache circles aligned into the page's own top-right header row next to **New chat** |

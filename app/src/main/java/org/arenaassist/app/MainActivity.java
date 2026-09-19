@@ -72,13 +72,15 @@ public class MainActivity extends Activity {
     private WebView chatWebView;
     private float currentZoomLevel = 100f;
     private ProgressBar progressBar;
-    // Top-right icon row: the menu and clear-cache buttons parked next to the
-    // page's own "New chat" bubble (see alignHeaderIcons).
-    private View menuFab;
+    // Top-right header: the clear-cache button parked next to the page's own
+    // "New chat" bubble (see alignHeaderIcons).
     private View cacheFab;
     private int lastHeaderRowWidth = -1;
     private boolean headerAlignPrimed;
     private boolean headerAlignQueued;
+    // Throttle for the "arena.ai returned HTTP …" toast (see onReceivedHttpError).
+    private static final long HTTP_ERROR_TOAST_INTERVAL_MS = 20000L;
+    private long lastHttpErrorToastAt;
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int FILE_CHOOSER_REQUEST_CODE = 1;
     private final static int CAMERA_REQUEST_CODE = 2;
@@ -94,8 +96,6 @@ public class MainActivity extends Activity {
     /** Base URL of the wrapped web app. */
     private static final String ARENA_HOME = "https://arena.ai/";
     /** Sections reachable from the main list menu, appended to the live arena host. */
-    private static final String PATH_LEADERBOARD = "/leaderboard";
-    private static final String PATH_SEARCH = "/history/search";
     /** Display scaling prefs: what to scale ("text" | "image" | "page") and how much (50-300%). */
     private static final String PREF_DISPLAY_MODE = "display_mode";
     private static final String PREF_DISPLAY_SCALE = "display_scale";
@@ -496,12 +496,14 @@ public class MainActivity extends Activity {
             "    });" +
             "  }" +
             "  function dump() {" +
-            "    let knownDbs = ['arenaChatData', 'arena-ai-chats', 'arenaChats', 'savedArenaChats', 'aiChatData'];" +
+            // Only enumerate databases that already exist. indexedDB.open(name)
+            // CREATES an empty database for an unknown name, so probing guessed
+            // names would plant stub databases inside arena.ai's own origin and can
+            // make the page's storage look empty to the site itself (which breaks
+            // features that keep their state there, e.g. the agent panel).
             "    let getDbs = (window.indexedDB && window.indexedDB.databases) ? window.indexedDB.databases() : Promise.resolve([]);" +
             "    getDbs.then(async (dbs) => {" +
-            "      let dbNamesSet = new Set((dbs || []).map(d => d.name).filter(Boolean));" +
-            "      knownDbs.forEach(k => dbNamesSet.add(k));" +
-            "      let dbNames = Array.from(dbNamesSet);" +
+            "      let dbNames = (dbs || []).map(d => d.name).filter(Boolean);" +
             "      let result = {};" +
             "      for (let dbName of dbNames) {" +
             "        let res = await new Promise((resolve) => {" +
@@ -744,16 +746,14 @@ public class MainActivity extends Activity {
         progressBar = findViewById(R.id.progressBar);
         chatWebView = findViewById(R.id.chatWebView);
 
-        // Floating list menu: New chat / Leaderboard / Search / Settings
-        menuFab = findViewById(R.id.menuFab);
-        if (menuFab != null) {
-            menuFab.setOnClickListener(v -> showMainMenu());
-        }
-
-        // Clear-cache shortcut sitting next to the menu button.
+        // Floating button: tap clears the cache, long press opens the settings.
         cacheFab = findViewById(R.id.cacheFab);
         if (cacheFab != null) {
             cacheFab.setOnClickListener(v -> clearCacheOnDemand());
+            cacheFab.setOnLongClickListener(v -> {
+                onCacheButtonLongPress();
+                return true;
+            });
         }
         watchWebViewResize();
 
@@ -1000,120 +1000,22 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ---------------------------------------------------------------- main menu
-
-    private static final int[] MENU_ICONS = {
-            R.drawable.ic_action_new_chat,
-            R.drawable.ic_action_leaderboard,
-            R.drawable.ic_action_search,
-            R.drawable.ic_settings_gear
-    };
-    private static final int[] MENU_LABELS = {
-            R.string.menu_new_chat,
-            R.string.menu_leaderboard,
-            R.string.menu_search,
-            R.string.menu_settings
-    };
+    // ------------------------------------------------------------ floating button
 
     /**
-     * The floating button used to jump straight into settings. It now opens a list
-     * menu with the four arena.ai sections, mirroring the site's own sidebar, with
-     * Settings as the last entry.
+     * The clear-cache button doubles as the way into the app's settings: a tap
+     * clears the cache, a long press opens the settings dialog. The old list menu
+     * (New chat / Leaderboard / Search / Settings) was removed because its first
+     * three entries only duplicated arena.ai's own sidebar, which is still one tap
+     * away inside the page.
      */
-    private void showMainMenu() {
-        runOnUiThread(() -> {
-            android.widget.ListAdapter adapter = new android.widget.BaseAdapter() {
-                @Override
-                public int getCount() {
-                    return MENU_LABELS.length;
-                }
-
-                @Override
-                public Object getItem(int position) {
-                    return getString(MENU_LABELS[position]);
-                }
-
-                @Override
-                public long getItemId(int position) {
-                    return position;
-                }
-
-                @Override
-                public View getView(int position, View convertView, android.view.ViewGroup parent) {
-                    View row = convertView != null ? convertView
-                            : getLayoutInflater().inflate(R.layout.menu_item_row, parent, false);
-                    android.widget.ImageView icon = row.findViewById(R.id.menuRowIcon);
-                    android.widget.TextView label = row.findViewById(R.id.menuRowLabel);
-                    icon.setImageResource(MENU_ICONS[position]);
-                    label.setText(MENU_LABELS[position]);
-                    return row;
-                }
-            };
-
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle(R.string.menu)
-                    .setAdapter(adapter, (dialog, which) -> {
-                        dialog.dismiss();
-                        switch (which) {
-                            case 0:
-                                startNewChat();
-                                break;
-                            case 1:
-                                openArenaSection(PATH_LEADERBOARD);
-                                break;
-                            case 2:
-                                openArenaSection(PATH_SEARCH);
-                                break;
-                            default:
-                                showSettingsDialog();
-                                break;
-                        }
-                    })
-                    .show();
-        });
-    }
-
-    /**
-     * Keeps whichever arena host the session is on (arena.ai or lmarena.ai) and only
-     * swaps the path, so a lmarena.ai session does not get bounced to a second
-     * cookie jar.
-     */
-    private String arenaSectionUrl(String path) {
-        String host = null;
-        if (chatWebView != null) {
-            try {
-                host = Uri.parse(chatWebView.getUrl()).getHost();
-            } catch (Exception ignored) {
-            }
+    private void onCacheButtonLongPress() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (!prefs.getBoolean("settings_long_press_hint_shown", false)) {
+            prefs.edit().putBoolean("settings_long_press_hint_shown", true).apply();
+            Toast.makeText(this, R.string.settings_hint, Toast.LENGTH_LONG).show();
         }
-        if (!isInternalHost(host)) {
-            host = Uri.parse(ARENA_HOME).getHost();
-        }
-        return "https://" + host + path;
-    }
-
-    private void openArenaSection(String path) {
-        if (chatWebView == null) return;
-        chatWebView.loadUrl(arenaSectionUrl(path));
-    }
-
-    /**
-     * Clicking the page's own "New Chat" control resets the React state, which a
-     * plain reload of the home URL does not reliably do. The URL is the fallback
-     * whenever that button is not on screen (safe mode, other page, layout change).
-     */
-    private void startNewChat() {
-        String url = chatWebView != null ? chatWebView.getUrl() : null;
-        if (isSafeMode || chatWebView == null || !isArenaUrl(url)) {
-            openArenaSection("/");
-            return;
-        }
-        safeEvaluateJavascript(chatWebView, ARENA_DOM_JS
-                + "(function() {"
-                + "  var dom = window.ArenaDom;"
-                + "  var btn = (dom && dom.findNewChat) ? dom.findNewChat() : null;"
-                + "  if (btn) { btn.click(); } else { window.location.href = '" + ARENA_HOME + "'; }"
-                + "})();");
+        showSettingsDialog();
     }
 
     // --------------------------------------------------- top-right header icon row
@@ -1178,10 +1080,9 @@ public class MainActivity extends Activity {
             "})();";
 
     /**
-     * Places the menu and clear-cache buttons in the same row as the page's own
-     * header bubble: same box size, same gap between the icons, one shared baseline,
-     * so the three controls read as a single balanced group instead of being
-     * scattered over the page.
+     * Places the clear-cache button in the same row as the page's own header bubble:
+     * same box size, same gap between the icons, one shared baseline, so the two
+     * controls read as a single balanced group instead of one floating mid-screen.
      *
      * The geometry arrives in CSS pixels. Dividing the page's devicePixelRatio by
      * the display density yields the physical pixels a CSS pixel currently spans, so
@@ -1202,7 +1103,7 @@ public class MainActivity extends Activity {
         final float ratio = (Double.isNaN(dpr) || dpr <= 0) ? 0f : (float) dpr;
 
         runOnUiThread(() -> {
-            if (menuFab == null || cacheFab == null || isFinishing() || isDestroyed()) return;
+            if (cacheFab == null || isFinishing() || isDestroyed()) return;
             float density = getResources().getDisplayMetrics().density;
             if (density <= 0f) density = 1f;
             // CSS px -> physical px -> dp; the ratio also covers pinch/page zoom.
@@ -1215,18 +1116,12 @@ public class MainActivity extends Activity {
             if (endDp < 0f || endDp + sizeDp > viewportPx * scale) return;
 
             int sizePx = Math.round(sizeDp * density);
-            int paddingPx = Math.round(sizePx * 0.22f);
-            applyHeaderIconBox(menuFab, sizePx, paddingPx,
+            applyHeaderIconBox(cacheFab, sizePx, Math.round(sizePx * 0.22f),
                     Math.round(topDp * density), Math.round(endDp * density));
-            applyHeaderIconBox(cacheFab, sizePx, paddingPx,
-                    -1, Math.round(HEADER_ICON_GAP_DP * density));
         });
     }
 
-    /**
-     * Rewrites one button's box, keeping its RelativeLayout rules (the clear-cache
-     * button must stay aligned to the top of, and to the start of, the menu button).
-     */
+    /** Rewrites the button's box, keeping its top-right RelativeLayout rules. */
     private void applyHeaderIconBox(View button, int sizePx, int paddingPx,
                                     int topMarginPx, int endMarginPx) {
         if (button == null || !(button.getLayoutParams() instanceof android.widget.RelativeLayout.LayoutParams)) {
@@ -1236,7 +1131,7 @@ public class MainActivity extends Activity {
                 (android.widget.RelativeLayout.LayoutParams) button.getLayoutParams();
         lp.width = sizePx;
         lp.height = sizePx;
-        if (topMarginPx >= 0) lp.topMargin = topMarginPx;
+        lp.topMargin = topMarginPx;
         lp.setMarginEnd(endMarginPx);
         button.setLayoutParams(lp);
         button.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
@@ -2284,6 +2179,35 @@ public class MainActivity extends Activity {
                     safeEvaluateJavascript(view, AUTO_FOCUS_JS);
                 }
             }
+        }
+
+        /**
+         * arena.ai reports every backend problem with the same in-page banner
+         * ("Something went wrong. Please try again."). Its HTTP status is what
+         * actually tells the cases apart, so the actionable ones - an expired
+         * session (401/403) and a rate limit (429) - are surfaced to the user
+         * instead of staying invisible inside the WebView. Throttled, because a
+         * rate-limited page can fire a burst of these at once.
+         */
+        @Override
+        public void onReceivedHttpError(WebView view, WebResourceRequest request,
+                                        android.webkit.WebResourceResponse errorResponse) {
+            super.onReceivedHttpError(view, request, errorResponse);
+            if (request == null || errorResponse == null) return;
+            int status = errorResponse.getStatusCode();
+            String url = request.getUrl() != null ? request.getUrl().toString() : null;
+            Log.d(TAG, "HTTP " + status + " for " + url);
+            if (status != 401 && status != 403 && status != 429) return;
+            if (!isArenaUrl(url)) return;
+            long now = System.currentTimeMillis();
+            if (now - lastHttpErrorToastAt < HTTP_ERROR_TOAST_INTERVAL_MS) return;
+            lastHttpErrorToastAt = now;
+            final int reported = status;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                Toast.makeText(MainActivity.this, getString(R.string.arena_http_error, reported),
+                        Toast.LENGTH_LONG).show();
+            });
         }
 
         @Override
