@@ -238,6 +238,119 @@
             box-shadow: 0 0 0 2px rgba(139, 124, 255, 0.2);
         }
 
+        /* Segmented control: what the size should apply to */
+        .seg-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .seg-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            border-radius: 7px;
+            color: var(--text-secondary);
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 9px 4px;
+            cursor: pointer;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .seg-btn.active {
+            background-color: var(--accent-color);
+            color: #fff;
+        }
+
+        /* Size presets */
+        .chip-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            flex: 1 1 0;
+            min-width: 56px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            padding: 8px 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+        }
+
+        .chip.active {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background-color: rgba(139, 124, 255, 0.12);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-top: 16px;
+            accent-color: var(--accent-color);
+        }
+
+        .scale-readout {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .preview-box {
+            margin-top: 12px;
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            background-color: var(--input-bg);
+            overflow: hidden;
+        }
+
+        .preview-text {
+            font-size: 13.5px;
+            line-height: 1.45;
+            color: var(--text-primary);
+            transition: font-size 0.12s ease;
+        }
+
+        .preview-img {
+            display: block;
+            width: 46px;
+            height: 46px;
+            margin-top: 8px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            transform-origin: left center;
+            transition: transform 0.12s ease;
+        }
+
+        .action-btn.danger {
+            background-color: transparent;
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.45);
+        }
+
+        .action-btn.danger:hover {
+            background-color: rgba(255, 107, 107, 0.12);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
         /* Action button styles */
         .action-btn {
             background-color: var(--accent-color);
@@ -338,6 +451,41 @@
             </div>
             -->
 
+            <div class="section-title">Display</div>
+
+            <div class="setting-row" style="border-bottom: none; padding-bottom: 2px;">
+                <div class="setting-info">
+                    <div class="setting-label">Change Text Size</div>
+                    <div class="setting-desc">Choose what to make larger or smaller, then the size. Applies to the
+                        chat page immediately.</div>
+                </div>
+            </div>
+
+            <div class="seg-group" role="group" aria-label="What to scale">
+                <button type="button" class="seg-btn" data-mode="text">Text only</button>
+                <button type="button" class="seg-btn" data-mode="image">Images</button>
+                <button type="button" class="seg-btn" data-mode="page">Whole page</button>
+            </div>
+
+            <div class="chip-row" role="group" aria-label="Size presets">
+                <button type="button" class="chip" data-scale="85">Small</button>
+                <button type="button" class="chip" data-scale="100">Normal</button>
+                <button type="button" class="chip" data-scale="120">Large</button>
+                <button type="button" class="chip" data-scale="145">XL</button>
+                <button type="button" class="chip" data-scale="175">XXL</button>
+            </div>
+
+            <input type="range" id="display_scale" min="50" max="300" step="5" value="100"
+                   aria-label="Custom size as a percentage">
+            <div class="scale-readout" id="scaleReadout">100%</div>
+
+            <div class="preview-box" aria-hidden="true">
+                <div class="preview-text" id="previewText">Preview: reply text, code and tables at this size (13 ×
+                    42 = 546).
+                </div>
+                <span class="preview-img" id="previewImg"></span>
+            </div>
+
             <div class="section-title">Prompts Suffix</div>
 
             <div class="input-group">
@@ -359,11 +507,73 @@
                 </div>
                 <button type="button" class="action-btn" onclick="openChatsViewer()">View</button>
             </div>
+
+            <div class="setting-row" style="border-bottom: none;">
+                <div class="setting-info">
+                    <div class="setting-label">Archived Chats</div>
+                    <div class="setting-desc" id="archiveDesc">Offline copy stored on this device. arena.ai keeps the
+                        conversations themselves.</div>
+                </div>
+                <button type="button" class="action-btn danger" id="clearArchiveBtn" onclick="clearArchive()">Remove
+                    all</button>
+            </div>
         </form>
     </div>
 
     <script>
         let lastHeight = window.innerHeight;
+
+        // ---- Display: what to scale, and how big ----
+        const SIZE_MIN = 50, SIZE_MAX = 300, SIZE_STEP = 5;
+        let displayMode = 'text';
+        let displayScale = 100;
+
+        function clampScale(v) {
+            v = parseInt(v, 10);
+            if (isNaN(v) || !v) v = 100;
+            v = Math.max(SIZE_MIN, Math.min(SIZE_MAX, v));
+            return Math.round(v / SIZE_STEP) * SIZE_STEP;
+        }
+
+        function renderDisplay() {
+            document.querySelectorAll('.seg-btn').forEach(b =>
+                b.classList.toggle('active', b.dataset.mode === displayMode));
+            document.querySelectorAll('.chip').forEach(c =>
+                c.classList.toggle('active', parseInt(c.dataset.scale, 10) === displayScale));
+            const range = document.getElementById('display_scale');
+            if (range) range.value = displayScale;
+            const readout = document.getElementById('scaleReadout');
+            if (readout) readout.textContent = displayScale + '%';
+
+            // The preview mirrors what each mode really touches on the page: text,
+            // media, or both.
+            const f = displayScale / 100;
+            const txt = document.getElementById('previewText');
+            const img = document.getElementById('previewImg');
+            if (txt) txt.style.fontSize = (displayMode === 'text' || displayMode === 'page') ? (13.5 * f) + 'px' : '';
+            if (img) img.style.transform = (displayMode === 'image' || displayMode === 'page') ? 'scale(' + f + ')' : '';
+        }
+
+        function setDisplay(mode, scale) {
+            if (mode) displayMode = mode;
+            if (scale) displayScale = clampScale(scale);
+            renderDisplay();
+            autoSave();
+        }
+
+        // ---- Offline chat archive ----
+        function markArchiveEmpty() {
+            const btn = document.getElementById('clearArchiveBtn');
+            const desc = document.getElementById('archiveDesc');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Nothing to remove';
+            }
+            if (desc) desc.textContent = 'Nothing archived on this device right now.';
+        }
+
+        // Native calls this back once the confirm dialog actually cleared the archive.
+        window.onArchiveCleared = markArchiveEmpty;
 
         function syncMutualExclusivity() {
             const autoFocusCb = document.getElementById('auto_focus_keyboard');
@@ -400,7 +610,9 @@
                 auto_focus_keyboard: document.getElementById('auto_focus_keyboard').checked,
                 prompt_on_launch: promptLaunchEl ? promptLaunchEl.checked : false,
                 ask_arena_suffix: document.getElementById('ask_arena_suffix').value,
-                shared_doc_suffix: document.getElementById('shared_doc_suffix').value
+                shared_doc_suffix: document.getElementById('shared_doc_suffix').value,
+                display_mode: displayMode,
+                display_scale: displayScale
             };
             if (typeof AndroidSettings !== 'undefined' && AndroidSettings.saveSettingsAuto) {
                 AndroidSettings.saveSettingsAuto(JSON.stringify(data));
@@ -421,9 +633,32 @@
                     }
                     document.getElementById('ask_arena_suffix').value = settings.ask_arena_suffix || '';
                     document.getElementById('shared_doc_suffix').value = settings.shared_doc_suffix || '';
+                    displayMode = settings.display_mode || 'text';
+                    displayScale = clampScale(settings.display_scale);
+                    if (settings.archived_chats === false) markArchiveEmpty();
                 } catch (e) {
                     console.error('Error loading settings from Android:', e);
                 }
+            }
+
+            renderDisplay();
+
+            // Display controls: each change saves and is applied live by native.
+            document.querySelectorAll('.seg-btn').forEach(btn => {
+                btn.addEventListener('click', () => setDisplay(btn.dataset.mode, 0));
+            });
+            document.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', () => setDisplay('', chip.dataset.scale));
+            });
+            const rangeEl = document.getElementById('display_scale');
+            if (rangeEl) {
+                // 'input' only repaints; 'change' (on release) commits, so dragging the
+                // slider does not spam the JS bridge.
+                rangeEl.addEventListener('input', () => {
+                    displayScale = clampScale(rangeEl.value);
+                    renderDisplay();
+                });
+                rangeEl.addEventListener('change', () => autoSave());
             }
 
             syncMutualExclusivity();
@@ -486,6 +721,14 @@
         function openChatsViewer() {
             if (typeof AndroidSettings !== 'undefined' && AndroidSettings.openChatsViewer) {
                 AndroidSettings.openChatsViewer();
+            }
+        }
+
+        // Native shows the confirmation, deletes the archive, then calls back
+        // window.onArchiveCleared() so this row updates itself.
+        function clearArchive() {
+            if (typeof AndroidSettings !== 'undefined' && AndroidSettings.clearChatHistory) {
+                AndroidSettings.clearChatHistory();
             }
         }
     </script>

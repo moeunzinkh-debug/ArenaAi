@@ -65,9 +65,9 @@
                 android:indeterminate="true"
                 android:visibility="gone" />
 
-            <!-- Floating native settings button (replaces duckAssist's cloned web-button injection) -->
+            <!-- Floating main list menu: New chat / Leaderboard / Search / Settings -->
             <ImageButton
-                android:id="@+id/settingsFab"
+                android:id="@+id/menuFab"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_alignParentTop="true"
@@ -75,8 +75,22 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginEnd="12dp"
                 android:background="@drawable/settings_fab_background"
-                android:contentDescription="@string/settings"
-                android:src="@drawable/ic_settings_gear"
+                android:contentDescription="@string/menu"
+                android:src="@drawable/ic_menu_list"
+                android:padding="10dp"
+                android:alpha="0.85" />
+
+            <!-- Clear-cache shortcut, sitting directly left of the menu button -->
+            <ImageButton
+                android:id="@+id/cacheFab"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_alignTop="@id/menuFab"
+                android:layout_toStartOf="@id/menuFab"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/settings_fab_background"
+                android:contentDescription="@string/clear_cache"
+                android:src="@drawable/ic_action_clear_cache"
                 android:padding="10dp"
                 android:alpha="0.85" />
         </RelativeLayout>

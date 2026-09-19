@@ -86,6 +86,16 @@ public class MainActivity extends Activity {
 
     /** Base URL of the wrapped web app. */
     private static final String ARENA_HOME = "https://arena.ai/";
+    /** Sections reachable from the main list menu, appended to the live arena host. */
+    private static final String PATH_LEADERBOARD = "/leaderboard";
+    private static final String PATH_SEARCH = "/history/search";
+    /** Display scaling prefs: what to scale ("text" | "image" | "page") and how much (50-300%). */
+    private static final String PREF_DISPLAY_MODE = "display_mode";
+    private static final String PREF_DISPLAY_SCALE = "display_scale";
+    /** Pre-display-mode name of the same percentage, still read for migration. */
+    private static final String PREF_LEGACY_TEXT_ZOOM = "text_zoom";
+    private static final int SCALE_MIN = 50;
+    private static final int SCALE_MAX = 300;
     /** Hosts that stay inside the WebView. Everything else opens in the system browser. */
     private static final String[] INTERNAL_HOSTS = {
             "arena.ai", "www.arena.ai", "lmarena.ai", "www.lmarena.ai"
@@ -398,6 +408,41 @@ public class MainActivity extends Activity {
     private android.app.Dialog chatsViewerDialog = null;
     private boolean isRequestingViewer = false;
 
+    /**
+     * Applies the "change text size" setting inside the page. Native text zoom only
+     * touches text, so image and page scaling go through a CSS zoom on one injected
+     * style element, which survives SPA re-renders and is cheap to undo.
+     */
+    private final String DISPLAY_JS = "(function() {" +
+            "    var STYLE_ID = 'arena-assist-display';" +
+            "    function styleEl() {" +
+            "        var el = document.getElementById(STYLE_ID);" +
+            "        if (el) return el;" +
+            "        if (!document.head && !document.documentElement) return null;" +
+            "        el = document.createElement('style');" +
+            "        el.id = STYLE_ID;" +
+            "        (document.head || document.documentElement).appendChild(el);" +
+            "        return el;" +
+            "    }" +
+            "    function apply(mode, pct) {" +
+            "        try {" +
+            "            var p = parseInt(pct, 10);" +
+            "            if (!p || p < 50 || p > 300) p = 100;" +
+            "            var s = (p / 100).toFixed(3);" +
+            "            var el = styleEl();" +
+            "            if (!el) return;" +
+            "            if (mode === 'image') {" +
+            "                el.textContent = 'img, svg, video, canvas, picture { zoom: ' + s + ' !important; }';" +
+            "            } else if (mode === 'page') {" +
+            "                el.textContent = 'html { zoom: ' + s + ' !important; }';" +
+            "            } else {" +
+            "                el.textContent = '';" +
+            "            }" +
+            "        } catch (e) { console.warn('ArenaDisplay.apply failed', e); }" +
+            "    }" +
+            "    if (!window.ArenaDisplay) window.ArenaDisplay = { apply: apply };" +
+            "})();";
+
     private final String DUMP_CHATS_JS = "(function() {" +
             "  function convertBlobs(obj) {" +
             "    return new Promise(function(resolve) {" +
@@ -582,6 +627,58 @@ public class MainActivity extends Activity {
         Log.d(TAG, "Cache cleared (cookies kept).");
     }
 
+    /**
+     * On-demand wipe behind the floating "Clear cache" button: the WebView HTTP cache
+     * plus the contents of the app cache folders. Only disposable bytes are touched —
+     * cookies (login), Web Storage, the chat archive and app files in files/ all stay,
+     * so clearing the cache never signs the user out or loses saved chats.
+     */
+    private void clearCacheOnDemand() {
+        clearCacheData();
+        // Disk walking must not run on the UI thread; the toast comes back later.
+        new Thread(() -> {
+            long bytes = 0L;
+            for (File dir : new File[] { getCacheDir(), getExternalCacheDir() }) {
+                bytes += deleteCacheContents(dir);
+            }
+            final long kb = bytes / 1024L;
+            runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                    kb > 0 ? getString(R.string.clear_cache_done, humanSize(kb))
+                            : getString(R.string.clear_cache_empty),
+                    Toast.LENGTH_SHORT).show());
+        }).start();
+    }
+
+    /**
+     * Recursively empties a cache directory and reports how much was removed.
+     * The staging copies of an in-flight share or camera capture are skipped:
+     * the file chooser may still be about to read them.
+     */
+    private long deleteCacheContents(File dir) {
+        if (dir == null || !dir.isDirectory()) return 0L;
+        File[] children = dir.listFiles();
+        if (children == null) return 0L;
+        long freed = 0L;
+        for (File f : children) {
+            String name = f.getName();
+            if (name.startsWith("shared_file_") || name.startsWith("camera_photo_")) continue;
+            if (f.isDirectory()) {
+                freed += deleteCacheContents(f);
+                f.delete();
+            } else {
+                long size = f.length();
+                if (f.delete()) freed += size;
+            }
+        }
+        return freed;
+    }
+
+    private static String humanSize(long kb) {
+        return kb >= 1024
+                ? String.format(Locale.US, "%.1f MB", kb / 1024.0)
+                : kb + " KB";
+    }
+
     private Uri saveUriToTempFile(Uri uri, String extension) {
         try {
             InputStream is = getContentResolver().openInputStream(uri);
@@ -640,10 +737,16 @@ public class MainActivity extends Activity {
         progressBar = findViewById(R.id.progressBar);
         chatWebView = findViewById(R.id.chatWebView);
 
-        // Floating native settings button (works in both fullscreen + drawer layouts)
-        View settingsFab = findViewById(R.id.settingsFab);
-        if (settingsFab != null) {
-            settingsFab.setOnClickListener(v -> showSettingsDialog());
+        // Floating list menu: New chat / Leaderboard / Search / Settings
+        View menuFab = findViewById(R.id.menuFab);
+        if (menuFab != null) {
+            menuFab.setOnClickListener(v -> showMainMenu());
+        }
+
+        // Clear-cache shortcut sitting next to the menu button.
+        View cacheFab = findViewById(R.id.cacheFab);
+        if (cacheFab != null) {
+            cacheFab.setOnClickListener(v -> clearCacheOnDemand());
         }
 
         WebSettings webSettings = chatWebView.getSettings();
@@ -697,9 +800,10 @@ public class MainActivity extends Activity {
             Log.e(TAG, "Failed to load cached_chats_json from database, resetting to empty", t);
             lastFetchedChatsJson = "{}";
         }
-        int savedZoom = prefs.getInt("text_zoom", 100);
-        currentZoomLevel = (float) savedZoom;
-        webSettings.setTextZoom(savedZoom);
+        // Display scaling. "text_zoom" is the key older builds used for the pinch
+        // gesture, so fall back to it instead of silently resetting to 100%.
+        currentZoomLevel = (float) displayScale();
+        webSettings.setTextZoom("text".equals(displayMode()) ? (int) currentZoomLevel : 100);
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -768,15 +872,16 @@ public class MainActivity extends Activity {
         ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-                float scale = detector.getScaleFactor();
-                currentZoomLevel = currentZoomLevel * scale;
-                // Clamp text zoom between 50% and 300%
-                currentZoomLevel = Math.max(50f, Math.min(currentZoomLevel, 300f));
-                int newZoom = Math.round(currentZoomLevel);
-                chatWebView.getSettings().setTextZoom(newZoom);
+                currentZoomLevel = Math.max(SCALE_MIN,
+                        Math.min(SCALE_MAX, currentZoomLevel * detector.getScaleFactor()));
+                int newScale = Math.round(currentZoomLevel);
 
+                // One number drives every display mode; "text_zoom" is kept in sync so
+                // builds that predate the display setting resume at the same size.
                 SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                prefs.edit().putInt("text_zoom", newZoom).apply();
+                prefs.edit().putInt(PREF_DISPLAY_SCALE, newScale)
+                        .putInt(PREF_LEGACY_TEXT_ZOOM, newScale).apply();
+                applyDisplayScale();
                 return true;
             }
         });
@@ -887,6 +992,206 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ---------------------------------------------------------------- main menu
+
+    private static final int[] MENU_ICONS = {
+            R.drawable.ic_action_new_chat,
+            R.drawable.ic_action_leaderboard,
+            R.drawable.ic_action_search,
+            R.drawable.ic_settings_gear
+    };
+    private static final int[] MENU_LABELS = {
+            R.string.menu_new_chat,
+            R.string.menu_leaderboard,
+            R.string.menu_search,
+            R.string.menu_settings
+    };
+
+    /**
+     * The floating button used to jump straight into settings. It now opens a list
+     * menu with the four arena.ai sections, mirroring the site's own sidebar, with
+     * Settings as the last entry.
+     */
+    private void showMainMenu() {
+        runOnUiThread(() -> {
+            android.widget.ListAdapter adapter = new android.widget.BaseAdapter() {
+                @Override
+                public int getCount() {
+                    return MENU_LABELS.length;
+                }
+
+                @Override
+                public Object getItem(int position) {
+                    return getString(MENU_LABELS[position]);
+                }
+
+                @Override
+                public long getItemId(int position) {
+                    return position;
+                }
+
+                @Override
+                public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                    View row = convertView != null ? convertView
+                            : getLayoutInflater().inflate(R.layout.menu_item_row, parent, false);
+                    android.widget.ImageView icon = row.findViewById(R.id.menuRowIcon);
+                    android.widget.TextView label = row.findViewById(R.id.menuRowLabel);
+                    icon.setImageResource(MENU_ICONS[position]);
+                    label.setText(MENU_LABELS[position]);
+                    return row;
+                }
+            };
+
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.menu)
+                    .setAdapter(adapter, (dialog, which) -> {
+                        dialog.dismiss();
+                        switch (which) {
+                            case 0:
+                                startNewChat();
+                                break;
+                            case 1:
+                                openArenaSection(PATH_LEADERBOARD);
+                                break;
+                            case 2:
+                                openArenaSection(PATH_SEARCH);
+                                break;
+                            default:
+                                showSettingsDialog();
+                                break;
+                        }
+                    })
+                    .show();
+        });
+    }
+
+    /**
+     * Keeps whichever arena host the session is on (arena.ai or lmarena.ai) and only
+     * swaps the path, so a lmarena.ai session does not get bounced to a second
+     * cookie jar.
+     */
+    private String arenaSectionUrl(String path) {
+        String host = null;
+        if (chatWebView != null) {
+            try {
+                host = Uri.parse(chatWebView.getUrl()).getHost();
+            } catch (Exception ignored) {
+            }
+        }
+        if (!isInternalHost(host)) {
+            host = Uri.parse(ARENA_HOME).getHost();
+        }
+        return "https://" + host + path;
+    }
+
+    private void openArenaSection(String path) {
+        if (chatWebView == null) return;
+        chatWebView.loadUrl(arenaSectionUrl(path));
+    }
+
+    /**
+     * Clicking the page's own "New Chat" control resets the React state, which a
+     * plain reload of the home URL does not reliably do. The URL is the fallback
+     * whenever that button is not on screen (safe mode, other page, layout change).
+     */
+    private void startNewChat() {
+        String url = chatWebView != null ? chatWebView.getUrl() : null;
+        if (isSafeMode || chatWebView == null || !isArenaUrl(url)) {
+            openArenaSection("/");
+            return;
+        }
+        safeEvaluateJavascript(chatWebView, ARENA_DOM_JS
+                + "(function() {"
+                + "  var dom = window.ArenaDom;"
+                + "  var btn = (dom && dom.findNewChat) ? dom.findNewChat() : null;"
+                + "  if (btn) { btn.click(); } else { window.location.href = '" + ARENA_HOME + "'; }"
+                + "})();");
+    }
+
+    // ----------------------------------------------------------- display scaling
+
+    private String displayMode() {
+        String mode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(PREF_DISPLAY_MODE, "text");
+        return ("image".equals(mode) || "page".equals(mode)) ? mode : "text";
+    }
+
+    private int displayScale() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int scale = prefs.getInt(PREF_DISPLAY_SCALE, prefs.getInt(PREF_LEGACY_TEXT_ZOOM, 100));
+        return Math.max(SCALE_MIN, Math.min(SCALE_MAX, scale));
+    }
+
+    /** Pushes the stored mode and size into WebSettings and into the live page. */
+    private void applyDisplayScale() {
+        if (chatWebView == null) return;
+        String mode = displayMode();
+        int scale = displayScale();
+        currentZoomLevel = (float) scale;
+        try {
+            // Native text zoom only affects text, which is what "Text" mode means; the
+            // other two modes scale through CSS so images and layout follow as well.
+            chatWebView.getSettings().setTextZoom("text".equals(mode) ? scale : 100);
+        } catch (Throwable t) {
+            Log.w(TAG, "Could not set text zoom", t);
+        }
+        safeEvaluateJavascript(chatWebView, DISPLAY_JS
+                + "window.ArenaDisplay && ArenaDisplay.apply('" + mode + "', " + scale + ");");
+    }
+
+    /**
+     * Persists a display mode/size pair coming from the settings page and applies it
+     * immediately, so the size changes while the dialog is still open.
+     */
+    private void storeDisplaySettings(org.json.JSONObject obj) {
+        String mode = obj.optString("display_mode", "text");
+        if (!"image".equals(mode) && !"page".equals(mode)) mode = "text";
+        int scale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, obj.optInt("display_scale", 100)));
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                .putString(PREF_DISPLAY_MODE, mode)
+                .putInt(PREF_DISPLAY_SCALE, scale)
+                .putInt(PREF_LEGACY_TEXT_ZOOM, scale)
+                .apply();
+        runOnUiThread(this::applyDisplayScale);
+    }
+
+    // ------------------------------------------------------------- chat archive
+
+    /**
+     * Removes the offline chat archive after an explicit confirmation. Only the local
+     * copy is deleted; arena.ai keeps the conversations themselves, and the archive is
+     * rebuilt from the page the next time arena.ai loads (that is how it is filled).
+     */
+    private void confirmClearChatArchive(final Runnable onCleared) {
+        runOnUiThread(() -> new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.archive_clear_title)
+                .setMessage(R.string.archive_clear_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    int removed;
+                    try {
+                        removed = ChatDatabaseHelper.getInstance(MainActivity.this).clearCachedChats();
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Failed to clear the chat archive", t);
+                        removed = -1;
+                    }
+                    // Pre-database builds mirrored the payload in prefs; without dropping
+                    // it too, onCreate() would migrate the "deleted" archive straight back.
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                            .remove("cached_chats_json").apply();
+                    lastFetchedChatsJson = "{}";
+                    if (removed < 0) {
+                        Toast.makeText(MainActivity.this, R.string.archive_clear_failed,
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(MainActivity.this, R.string.archive_clear_done,
+                                Toast.LENGTH_SHORT).show();
+                        if (onCleared != null) onCleared.run();
+                    }
+                })
+                .show());
+    }
+
     @JavascriptInterface
     public void showSettingsDialog() {
         runOnUiThread(() -> {
@@ -913,6 +1218,10 @@ public class MainActivity extends Activity {
                         obj.put("prompt_on_launch", prefs.getBoolean("prompt_on_launch", false));
                         obj.put("ask_arena_suffix", prefs.getString("ask_arena_suffix", ""));
                         obj.put("shared_doc_suffix", prefs.getString("shared_doc_suffix", ""));
+                        obj.put("display_mode", displayMode());
+                        obj.put("display_scale", displayScale());
+                        obj.put("archived_chats", lastFetchedChatsJson != null
+                                && !lastFetchedChatsJson.isEmpty() && !lastFetchedChatsJson.equals("{}"));
                     } catch (Exception e) {
                         Log.e(TAG, "Error generating settings JSON", e);
                     }
@@ -940,6 +1249,7 @@ public class MainActivity extends Activity {
                              .putString("ask_arena_suffix", obj.optString("ask_arena_suffix", ""))
                              .putString("shared_doc_suffix", obj.optString("shared_doc_suffix", ""))
                              .apply();
+                        storeDisplaySettings(obj);
                         runOnUiThread(() -> {
                             dialog.dismiss();
                             Toast.makeText(MainActivity.this, "Settings saved successfully", Toast.LENGTH_SHORT).show();
@@ -970,6 +1280,7 @@ public class MainActivity extends Activity {
                              .putString("ask_arena_suffix", obj.optString("ask_arena_suffix", ""))
                              .putString("shared_doc_suffix", obj.optString("shared_doc_suffix", ""))
                              .apply();
+                        storeDisplaySettings(obj);
                     } catch (Exception e) {
                         Log.e(TAG, "Error auto-saving settings", e);
                     }
@@ -986,6 +1297,18 @@ public class MainActivity extends Activity {
                         dialog.dismiss();
                         fetchChatsAndShowViewer();
                     });
+                }
+
+                @JavascriptInterface
+                public void clearChatHistory() {
+                    // The confirm dialog is native on purpose: a destructive action
+                    // should not be stylable away by the page it is clearing.
+                    confirmClearChatArchive(() -> runOnUiThread(() -> {
+                        try {
+                            webView.evaluateJavascript("window.onArchiveCleared && onArchiveCleared();", null);
+                        } catch (Throwable ignored) {
+                        }
+                    }));
                 }
             }, "AndroidSettings");
 
@@ -1712,6 +2035,8 @@ public class MainActivity extends Activity {
             safeEvaluateJavascript(view, ARENA_DOM_JS);
             safeEvaluateJavascript(view, BLOB_JS);
             safeEvaluateJavascript(view, CLIPBOARD_JS);
+            // A fresh document has no injected style yet, so re-apply the display scale.
+            applyDisplayScale();
         }
 
         @Override
@@ -1722,6 +2047,8 @@ public class MainActivity extends Activity {
             safeEvaluateJavascript(view, ARENA_DOM_JS);
             safeEvaluateJavascript(view, BLOB_JS);
             safeEvaluateJavascript(view, CLIPBOARD_JS);
+            // onPageStarted can run before <head> exists; this is the reliable pass.
+            applyDisplayScale();
             SharedPreferences prefs = view.getContext().getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
             // "Ask Arena" shared text wins over plain auto-focus (injection focuses too).
             if (pendingSharedText != null && !pendingSharedText.isEmpty()) {

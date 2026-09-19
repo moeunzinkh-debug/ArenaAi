@@ -58,6 +58,26 @@ public class ChatDatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Drops the cached chat archive.
+     *
+     * Only the local offline copy is removed; nothing on arena.ai changes. The
+     * legacy SharedPreferences mirror of the same payload has to be cleared by
+     * the caller, otherwise onCreate() would migrate it back into the database.
+     *
+     * @return number of rows removed, or -1 if the delete failed
+     */
+    public synchronized int clearCachedChats() {
+        SQLiteDatabase db = null;
+        try {
+            db = getWritableDatabase();
+            return db.delete(TABLE_CHAT_CACHE, COLUMN_KEY + " = ?", new String[] { KEY_CHATS_JSON });
+        } catch (Throwable t) {
+            Log.e(TAG, "Error clearing chats JSON from SQLite database", t);
+            return -1;
+        }
+    }
+
     public synchronized String getCachedChatsJson() {
         SQLiteDatabase db = null;
         Cursor cursor = null;
