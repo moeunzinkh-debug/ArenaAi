@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name" translatable="false">ArenaAssist</string>
+    <string name="app_description">Lightweight, privacy-focused WebView wrapper for arena.ai</string>
+    <string name="ask_arena">Ask Arena</string>
+    <string name="settings">Settings</string>
+    <string name="error_copy">Please select and copy text manually</string>
+    <string name="dialog_OK_button">OK</string>
+    <string name="dialog_NO_button">No</string>
+    <string name="dialog_Later_button">Maybe later</string>
+    <string name="download">Download started:</string>
+    <string name="url_copied">copied to clipboard</string>
+    <string name="attach_shared_file">Tap the attach button to add the shared file</string>
+</resources>
