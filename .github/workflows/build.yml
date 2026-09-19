@@ -29,7 +29,19 @@ jobs:
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace --console=plain 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # The raw job log lives on a blob host that some networks cannot reach, so
+      # the compile errors are echoed as annotations, which stay readable via
+      # `gh run view` and on the run's page.
+      - name: Report build errors as annotations
+        if: failure()
+        run: |
+          grep -aE "error: |^e: |Execution failed for task|What went wrong|Caused by:|AAPT" -A 2 "$RUNNER_TEMP/build.log" \
+            | head -100 | while IFS= read -r line; do
+              echo "::error title=Gradle::$line"
+            done || true
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

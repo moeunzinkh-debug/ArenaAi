@@ -2149,6 +2149,35 @@ public class MainActivity extends Activity {
             super.onReceivedError(view, request, error);
         }
 
+        /**
+         * arena.ai reports every backend problem with the same in-page banner
+         * ("Something went wrong. Please try again."). Its HTTP status is what
+         * actually tells the cases apart, so the actionable ones - an expired
+         * session (401/403) and a rate limit (429) - are surfaced to the user
+         * instead of staying invisible inside the WebView. Throttled, because a
+         * rate-limited page can fire a burst of these at once.
+         */
+        @Override
+        public void onReceivedHttpError(WebView view, WebResourceRequest request,
+                                        android.webkit.WebResourceResponse errorResponse) {
+            super.onReceivedHttpError(view, request, errorResponse);
+            if (request == null || errorResponse == null) return;
+            int status = errorResponse.getStatusCode();
+            String url = request.getUrl() != null ? request.getUrl().toString() : null;
+            Log.d(TAG, "HTTP " + status + " for " + url);
+            if (status != 401 && status != 403 && status != 429) return;
+            if (!isArenaUrl(url)) return;
+            long now = System.currentTimeMillis();
+            if (now - lastHttpErrorToastAt < HTTP_ERROR_TOAST_INTERVAL_MS) return;
+            lastHttpErrorToastAt = now;
+            final int reported = status;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                Toast.makeText(MainActivity.this, getString(R.string.arena_http_error, reported),
+                        Toast.LENGTH_LONG).show();
+            });
+        }
+
         @Override
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
             if (isArenaUrl(failingUrl)) {
@@ -2179,35 +2208,6 @@ public class MainActivity extends Activity {
                     safeEvaluateJavascript(view, AUTO_FOCUS_JS);
                 }
             }
-        }
-
-        /**
-         * arena.ai reports every backend problem with the same in-page banner
-         * ("Something went wrong. Please try again."). Its HTTP status is what
-         * actually tells the cases apart, so the actionable ones - an expired
-         * session (401/403) and a rate limit (429) - are surfaced to the user
-         * instead of staying invisible inside the WebView. Throttled, because a
-         * rate-limited page can fire a burst of these at once.
-         */
-        @Override
-        public void onReceivedHttpError(WebView view, WebResourceRequest request,
-                                        android.webkit.WebResourceResponse errorResponse) {
-            super.onReceivedHttpError(view, request, errorResponse);
-            if (request == null || errorResponse == null) return;
-            int status = errorResponse.getStatusCode();
-            String url = request.getUrl() != null ? request.getUrl().toString() : null;
-            Log.d(TAG, "HTTP " + status + " for " + url);
-            if (status != 401 && status != 403 && status != 429) return;
-            if (!isArenaUrl(url)) return;
-            long now = System.currentTimeMillis();
-            if (now - lastHttpErrorToastAt < HTTP_ERROR_TOAST_INTERVAL_MS) return;
-            lastHttpErrorToastAt = now;
-            final int reported = status;
-            runOnUiThread(() -> {
-                if (isFinishing() || isDestroyed()) return;
-                Toast.makeText(MainActivity.this, getString(R.string.arena_http_error, reported),
-                        Toast.LENGTH_LONG).show();
-            });
         }
 
         @Override
