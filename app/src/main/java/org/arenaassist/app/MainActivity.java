@@ -72,6 +72,13 @@ public class MainActivity extends Activity {
     private WebView chatWebView;
     private float currentZoomLevel = 100f;
     private ProgressBar progressBar;
+    // Top-right icon row: the menu and clear-cache buttons parked next to the
+    // page's own "New chat" bubble (see alignHeaderIcons).
+    private View menuFab;
+    private View cacheFab;
+    private int lastHeaderRowWidth = -1;
+    private boolean headerAlignPrimed;
+    private boolean headerAlignQueued;
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int FILE_CHOOSER_REQUEST_CODE = 1;
     private final static int CAMERA_REQUEST_CODE = 2;
@@ -738,16 +745,17 @@ public class MainActivity extends Activity {
         chatWebView = findViewById(R.id.chatWebView);
 
         // Floating list menu: New chat / Leaderboard / Search / Settings
-        View menuFab = findViewById(R.id.menuFab);
+        menuFab = findViewById(R.id.menuFab);
         if (menuFab != null) {
             menuFab.setOnClickListener(v -> showMainMenu());
         }
 
         // Clear-cache shortcut sitting next to the menu button.
-        View cacheFab = findViewById(R.id.cacheFab);
+        cacheFab = findViewById(R.id.cacheFab);
         if (cacheFab != null) {
             cacheFab.setOnClickListener(v -> clearCacheOnDemand());
         }
+        watchWebViewResize();
 
         WebSettings webSettings = chatWebView.getSettings();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -1108,6 +1116,165 @@ public class MainActivity extends Activity {
                 + "})();");
     }
 
+    // --------------------------------------------------- top-right header icon row
+
+    /** Gap kept between the three header icons and the bounds a box is clamped to, in dp. */
+    private static final float HEADER_ICON_GAP_DP = 8f;
+    private static final float HEADER_ICON_MIN_DP = 28f;
+    private static final float HEADER_ICON_MAX_DP = 48f;
+
+    /**
+     * Reports the geometry of arena.ai's own header button - the "New chat" bubble
+     * that already sits in the page's top-right corner - so the two native buttons
+     * can be parked in that same row instead of floating in the middle of the screen.
+     *
+     * The bubble is found by position rather than by markup: it is the topmost
+     * button/anchor of the top-right quadrant. The React header mounts a moment
+     * after the document is ready, so the script retries briefly and then gives up
+     * quietly (the layout's default margins stay in charge, and a later reload,
+     * resize or text-size change triggers a fresh attempt).
+     */
+    private static final String HEADER_ALIGN_JS = "(function() {" +
+            "  function box(el) {" +
+            "    if (!el || !el.getBoundingClientRect) return null;" +
+            "    var r = el.getBoundingClientRect();" +
+            "    return (r.width > 8 && r.height > 8) ? r : null;" +
+            "  }" +
+            "  function topRightButton() {" +
+            "    var vw = window.innerWidth, vh = window.innerHeight;" +
+            "    var els = document.querySelectorAll('button, a, [role=\"button\"]');" +
+            "    var best = null, bestRight = -1;" +
+            "    for (var i = 0; i < els.length; i++) {" +
+            "      var r = box(els[i]);" +
+            "      if (!r) continue;" +
+            "      if (r.top > vh * 0.25 || r.left < vw * 0.5) continue;" +
+            "      if (r.width < 16 || r.width > 96 || r.height < 16 || r.height > 96) continue;" +
+            "      if (r.right > bestRight) { bestRight = r.right; best = r; }" +
+            "    }" +
+            "    return best;" +
+            "  }" +
+            "  function find() {" +
+            "    var r = topRightButton();" +
+            "    if (r) return r;" +
+            "    var dom = window.ArenaDom;" +
+            "    var newChat = (dom && dom.findNewChat) ? dom.findNewChat() : null;" +
+            "    r = box(newChat);" +
+            "    if (r && r.left > window.innerWidth * 0.5 && r.top < window.innerHeight * 0.25) return r;" +
+            "    return null;" +
+            "  }" +
+            "  var tries = 0;" +
+            "  function step() {" +
+            "    var r = find();" +
+            "    if (r) {" +
+            "      try {" +
+            "        Android.alignHeaderIcons(r.left, r.top, r.width, r.height," +
+            "            window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);" +
+            "        return;" +
+            "      } catch (e) {}" +
+            "    }" +
+            "    if (++tries < 12) window.setTimeout(step, 250);" +
+            "  }" +
+            "  step();" +
+            "})();";
+
+    /**
+     * Places the menu and clear-cache buttons in the same row as the page's own
+     * header bubble: same box size, same gap between the icons, one shared baseline,
+     * so the three controls read as a single balanced group instead of being
+     * scattered over the page.
+     *
+     * The geometry arrives in CSS pixels. Dividing the page's devicePixelRatio by
+     * the display density yields the physical pixels a CSS pixel currently spans, so
+     * the box also stays glued to the bubble while the page is zoomed. Anything out
+     * of range is clamped, and impossible geometry is ignored rather than applied.
+     */
+    @JavascriptInterface
+    public void alignHeaderIcons(double left, double top, double width, double height,
+                                 double viewportWidth, double viewportHeight, double dpr) {
+        if (Double.isNaN(left) || Double.isNaN(top) || Double.isNaN(width) || Double.isNaN(height)
+                || Double.isNaN(viewportWidth) || width <= 0 || height <= 0 || viewportWidth <= 0) {
+            return;
+        }
+        final float leftPx = (float) left;
+        final float topPx = (float) top;
+        final float heightPx = (float) height;
+        final float viewportPx = (float) viewportWidth;
+        final float ratio = (Double.isNaN(dpr) || dpr <= 0) ? 0f : (float) dpr;
+
+        runOnUiThread(() -> {
+            if (menuFab == null || cacheFab == null || isFinishing() || isDestroyed()) return;
+            float density = getResources().getDisplayMetrics().density;
+            if (density <= 0f) density = 1f;
+            // CSS px -> physical px -> dp; the ratio also covers pinch/page zoom.
+            float scale = (ratio > 0f ? ratio : density) / density;
+
+            float sizeDp = clamp(heightPx * scale, HEADER_ICON_MIN_DP, HEADER_ICON_MAX_DP);
+            float topDp = clamp(topPx * scale, 0f, 96f);
+            // The bubble's own distance from the right edge, plus the shared gap.
+            float endDp = (viewportPx - leftPx) * scale + HEADER_ICON_GAP_DP;
+            if (endDp < 0f || endDp + sizeDp > viewportPx * scale) return;
+
+            int sizePx = Math.round(sizeDp * density);
+            int paddingPx = Math.round(sizePx * 0.22f);
+            applyHeaderIconBox(menuFab, sizePx, paddingPx,
+                    Math.round(topDp * density), Math.round(endDp * density));
+            applyHeaderIconBox(cacheFab, sizePx, paddingPx,
+                    -1, Math.round(HEADER_ICON_GAP_DP * density));
+        });
+    }
+
+    /**
+     * Rewrites one button's box, keeping its RelativeLayout rules (the clear-cache
+     * button must stay aligned to the top of, and to the start of, the menu button).
+     */
+    private void applyHeaderIconBox(View button, int sizePx, int paddingPx,
+                                    int topMarginPx, int endMarginPx) {
+        if (button == null || !(button.getLayoutParams() instanceof android.widget.RelativeLayout.LayoutParams)) {
+            return;
+        }
+        android.widget.RelativeLayout.LayoutParams lp =
+                (android.widget.RelativeLayout.LayoutParams) button.getLayoutParams();
+        lp.width = sizePx;
+        lp.height = sizePx;
+        if (topMarginPx >= 0) lp.topMargin = topMarginPx;
+        lp.setMarginEnd(endMarginPx);
+        button.setLayoutParams(lp);
+        button.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
+    }
+
+    private static float clamp(float value, float min, float max) {
+        return value < min ? min : (value > max ? max : value);
+    }
+
+    /** Re-measures the page's header bubble once the page has settled. Idempotent. */
+    private void applyHeaderIconAlignment(long delayMs) {
+        if (chatWebView == null || isSafeMode) return;
+        chatWebView.postDelayed(() -> {
+            if (chatWebView == null || isSafeMode || isFinishing() || isDestroyed()) return;
+            safeEvaluateJavascript(chatWebView, HEADER_ALIGN_JS);
+        }, delayMs);
+    }
+
+    /**
+     * Rotating the device resizes the WebView, which moves the page's bubble with it.
+     * Only a real width change re-measures, so an unrelated layout pass (a keyboard
+     * opening, say) never spams the bridge.
+     */
+    private void watchWebViewResize() {
+        if (chatWebView == null) return;
+        chatWebView.addOnLayoutChangeListener((v, l, t, r, b, oldL, oldT, oldR, oldB) -> {
+            int width = r - l;
+            if (!headerAlignPrimed || width == lastHeaderRowWidth) return;
+            lastHeaderRowWidth = width;
+            if (headerAlignQueued) return;
+            headerAlignQueued = true;
+            v.postDelayed(() -> {
+                headerAlignQueued = false;
+                applyHeaderIconAlignment(0);
+            }, 400);
+        });
+    }
+
     // ----------------------------------------------------------- display scaling
 
     private String displayMode() {
@@ -1137,6 +1304,9 @@ public class MainActivity extends Activity {
         }
         safeEvaluateJavascript(chatWebView, DISPLAY_JS
                 + "window.ArenaDisplay && ArenaDisplay.apply('" + mode + "', " + scale + ");");
+        // Text-size (and page-zoom) changes reflow the page, so the header bubble
+        // moves: re-measure it to keep the icon row glued in place.
+        if (headerAlignPrimed) applyHeaderIconAlignment(350);
     }
 
     /**
@@ -2049,6 +2219,10 @@ public class MainActivity extends Activity {
             safeEvaluateJavascript(view, CLIPBOARD_JS);
             // onPageStarted can run before <head> exists; this is the reliable pass.
             applyDisplayScale();
+            // The page's own header bubble is mounted by React after load; measure it
+            // so the two native buttons land in that top-right row, not mid-screen.
+            headerAlignPrimed = true;
+            applyHeaderIconAlignment(600);
             SharedPreferences prefs = view.getContext().getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
             // "Ask Arena" shared text wins over plain auto-focus (injection focuses too).
             if (pendingSharedText != null && !pendingSharedText.isEmpty()) {

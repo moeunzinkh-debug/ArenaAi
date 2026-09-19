@@ -40,8 +40,14 @@ duck.ai-specific logic replaced by arena.ai logic.
 - 📋 **Floating List Menu**: the floating button opens a list menu — **New chat**,
   **Leaderboard**, **Search**, **Settings** — mirroring the arena.ai sidebar, so
   the sections are one tap away on any page.
-- 🧹 **Clear Cache button**: a second icon sits directly left of the menu button in the
-  top-right corner. One tap drops the WebView HTTP cache and the app cache folders and
+- 📐 **One header row**: the list-menu and clear-cache buttons are parked in the
+  top-right corner, immediately left of arena.ai's own **New chat** bubble. All
+  three icons share one horizontal row, one baseline, one box size and one 8dp
+  gap. The row is measured from the live page (see `alignHeaderIcons`), so it
+  stays glued to that bubble on rotation, on text-size changes and on page zoom —
+  it is never left floating in the middle of the screen.
+- 🧹 **Clear Cache button**: the left-most icon of that row. One tap drops the
+  WebView HTTP cache and the app cache folders and
   toasts how much was freed. Login, Web Storage and the chat archive are untouched, and
   in-flight share/camera temp files are skipped, so it is always safe to press. (Cache is
   also cleared on exit.)
@@ -63,6 +69,7 @@ duck.ai-specific logic replaced by arena.ai logic.
 | Settings button | Cloned duck.ai web button | Floating native list menu: New chat / Leaderboard / Search / Settings |
 | Text size | Pinch zoom only | Pinch zoom **plus** a Display setting: scale text only, images, or the whole page (50-300%) |
 | Cache control | Cleared on exit only | Cleared on exit **plus** a top-right Clear cache button that reports the bytes freed |
+| Header buttons | Cloned duck.ai web buttons | Native list-menu + clear-cache circles aligned into the page's own top-right header row next to **New chat** |
 | Image-zoom monitor | duck.ai hashed CSS class | Removed |
 | Download folder | `Downloads/duck.ai/` | `Downloads/ArenaAssist/` |
 | Export filename | `Duck_AI_Chat_<ts>.md` | `Arena_Chat_<ts>.md` |
